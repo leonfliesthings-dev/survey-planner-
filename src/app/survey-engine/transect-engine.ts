@@ -31,7 +31,7 @@ interface ClippedLine {
 }
 
 // ── Constants (transect_engine.dart:47-63) ──
-const SAMPLE_STEP_M = 30.0;
+const SAMPLE_STEP_M = 12.0;
 const DP_VERTICAL_TOL_M = 5.0;
 const SAG_ALLOWANCE_M = 15.0;
 const TURN_SECONDS = 10.0;

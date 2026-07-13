@@ -23,6 +23,7 @@ interface GenResult {
   profile: ProfilePt[];
   minClearanceM: number | null;
   viewshed: ViewshedResult | null;
+  terrainFollow: boolean;
   warnings: string[];
 }
 
@@ -109,6 +110,8 @@ function rampColor(t: number): string {
                 <label>Speed (m/s)<input type="number" step="0.5" min="1" placeholder="auto" [value]="speedStr()" (input)="speedStr.set($any($event.target).value)" /></label>
                 <label>Buffer (m)<input type="number" step="5" min="0" [value]="bufferM()" (input)="bufferM.set(+$any($event.target).value)" /></label>
                 <label>Gimbal (°)<input type="number" step="5" min="-90" max="30" [value]="gimbalDeg()" (input)="gimbalDeg.set(+$any($event.target).value)" /></label>
+                <label>Front lap (%)<input type="number" step="5" min="30" max="95" [value]="frontOverlap()" (input)="frontOverlap.set(+$any($event.target).value)" /></label>
+                <label>Side lap (%)<input type="number" step="5" min="30" max="95" [value]="sideOverlap()" (input)="sideOverlap.set(+$any($event.target).value)" /></label>
               </div>
 
               <div class="switchrow">
@@ -277,6 +280,8 @@ export class SurveyPlanner implements AfterViewInit {
   readonly bufferM = signal(40);
   readonly directionDeg = signal(90);
   readonly gimbalDeg = signal(-90);
+  readonly frontOverlap = signal(70);
+  readonly sideOverlap = signal(70);
   readonly terrainFollow = signal(false);
   readonly viewshedOn = signal(false);
   readonly viewshedResult = signal<ViewshedResult | null>(null);
@@ -313,7 +318,7 @@ export class SurveyPlanner implements AfterViewInit {
     // Auto-rebuild the plan whenever any left-panel setting or the drawn area changes.
     effect(() => {
       this.droneId(); this.payloadId(); this.mode(); this.targetGsdCm(); this.targetHeightM();
-      this.speedStr(); this.bufferM(); this.gimbalDeg(); this.directionDeg(); this.terrainFollow(); this.polygon(); this.lz();
+      this.speedStr(); this.bufferM(); this.gimbalDeg(); this.frontOverlap(); this.sideOverlap(); this.directionDeg(); this.terrainFollow(); this.polygon(); this.lz();
       this.scheduleRegen();
     });
     // Remember the token across reloads (browser localStorage).
@@ -413,7 +418,7 @@ export class SurveyPlanner implements AfterViewInit {
     const lz = this.lz(); if (!lz) return;
     const opt = this.payloadOpts().find((p) => p.id === this.payloadId()) ?? this.payloadOpts()[0];
     const aircraft = this.drones.find((d) => d.id === this.droneId())!;
-    const planning = planFlight({ camera: opt.camera, lens: opt.lens, captureType: captureTypes.find((c) => c.type === 'ortho2d')!, mode: this.mode(), targetGsdCm: this.targetGsdCm(), targetHeightM: this.targetHeightM(), mappingSpeedMs: aircraft.mappingSpeedMs, aircraftFlightTimeMinutes: aircraft.maxFlightTimeMinutes });
+    const planning = planFlight({ camera: opt.camera, lens: opt.lens, captureType: this.captureConfig(), mode: this.mode(), targetGsdCm: this.targetGsdCm(), targetHeightM: this.targetHeightM(), mappingSpeedMs: aircraft.mappingSpeedMs, aircraftFlightTimeMinutes: aircraft.maxFlightTimeMinutes });
     const range = this.viewshedRange(lz);
     const dLat = range / 110540, dLng = range / (111320 * Math.cos((lz.lat * Math.PI) / 180));
     const grid = await loadTerrainGrid({ minLat: lz.lat - dLat, maxLat: lz.lat + dLat, minLng: lz.lng - dLng, maxLng: lz.lng + dLng }, 13, browserTerrariumFetcher());
@@ -509,6 +514,11 @@ export class SurveyPlanner implements AfterViewInit {
     this.directionDeg.set(Math.round(((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360));
   }
 
+  // Nadir ortho capture type with the user's front/side overlap folded in.
+  private captureConfig() {
+    return { ...captureTypes.find((c) => c.type === 'ortho2d')!, frontOverlapPct: this.frontOverlap(), sideOverlapPct: this.sideOverlap() };
+  }
+
   async generate(): Promise<void> {
     this.error.set(''); this.pushMsg.set(''); this.busy.set(true);
     try {
@@ -518,7 +528,7 @@ export class SurveyPlanner implements AfterViewInit {
       const speedOverride = this.speedStr().trim() ? +this.speedStr() : null;
 
       const planning = planFlight({
-        camera: opt.camera, lens: opt.lens, captureType: captureTypes.find((c) => c.type === 'ortho2d')!,
+        camera: opt.camera, lens: opt.lens, captureType: this.captureConfig(),
         mode: this.mode(), targetGsdCm: this.targetGsdCm(), targetHeightM: this.targetHeightM(),
         mappingSpeedMs: aircraft.mappingSpeedMs, speedOverrideMs: speedOverride, aircraftFlightTimeMinutes: aircraft.maxFlightTimeMinutes,
       });
@@ -549,32 +559,31 @@ export class SurveyPlanner implements AfterViewInit {
       // Terrain profile + collision check — sample densely ALONG the flight path
       // (every ~15 m), interpolating flight altitude between waypoints, so the
       // terrain trace is high-fidelity rather than one coarse point per waypoint.
-      const PROFILE_STEP_M = 15;
-      const flightMslAt = (w: { heightM: number }) => takeoffMsl + w.heightM;
+      const PROFILE_STEP_M = 10;
+      const aglTarget = fp.heightM;
+      const follow = this.terrainFollow();
       const wps = tp.waypoints;
       const profile: ProfilePt[] = [];
       let dist = 0, minClear = Infinity, haveDsm = false;
-      const sample = (pos: LatLng, flightMsl: number, d: number) => {
+      const sample = (pos: LatLng, d: number) => {
         const terr = grid ? grid.elevationAt(pos) : null;
         if (terr != null) haveDsm = true;
         const terrainMsl = terr ?? takeoffMsl;
+        // What actually flies: surface-follow holds AGL above the local ground;
+        // fixed-height flies flat above the take-off point (real collision risk).
+        const flightMsl = follow ? terrainMsl + aglTarget : takeoffMsl + aglTarget;
         minClear = Math.min(minClear, flightMsl - terrainMsl);
         profile.push({ d, terrain: terrainMsl, flight: flightMsl });
       };
-      if (wps.length) sample(wps[0].pos, flightMslAt(wps[0]), 0);
+      if (wps.length) sample(wps[0].pos, 0);
       for (let i = 1; i < wps.length; i++) {
         const prev = wps[i - 1], cur = wps[i];
         const segLen = haversine(prev.pos, cur.pos);
         const n = Math.max(1, Math.ceil(segLen / PROFILE_STEP_M));
-        const fA = flightMslAt(prev), fB = flightMslAt(cur);
         for (let k = 1; k <= n; k++) {
           const t = k / n;
           dist += segLen / n;
-          sample(
-            { lat: prev.pos.lat + (cur.pos.lat - prev.pos.lat) * t, lng: prev.pos.lng + (cur.pos.lng - prev.pos.lng) * t },
-            fA + (fB - fA) * t,
-            dist
-          );
+          sample({ lat: prev.pos.lat + (cur.pos.lat - prev.pos.lat) * t, lng: prev.pos.lng + (cur.pos.lng - prev.pos.lng) * t }, dist);
         }
       }
 
@@ -591,7 +600,7 @@ export class SurveyPlanner implements AfterViewInit {
       if (haveDsm && minClear < SAFETY_CLEARANCE_M) warnings.push(`Terrain collision risk: min clearance ${minClear.toFixed(0)} m (below ${SAFETY_CLEARANCE_M} m). Enable terrain follow or raise height.`);
       if (speedOverride && speedOverride > aircraft.maxSpeedMs) warnings.push(`Speed ${speedOverride} m/s exceeds the ${aircraft.name} max (${aircraft.maxSpeedMs} m/s).`);
 
-      this.result.set({ planning, tp, mission, distanceKm: tp.totalLengthM / 1000, profile, minClearanceM: haveDsm ? minClear : null, viewshed, warnings });
+      this.result.set({ planning, tp, mission, distanceKm: tp.totalLengthM / 1000, profile, minClearanceM: haveDsm ? minClear : null, viewshed, terrainFollow: this.terrainFollow(), warnings });
       this.drawSurvey(mission.route, target, flightPoly);
       this.drawViewshed(viewshed, lz);
     } catch (e: unknown) {
@@ -671,12 +680,28 @@ export class SurveyPlanner implements AfterViewInit {
     return p.filter((x) => x.flight - x.terrain < SAFETY_CLEARANCE_M).map((x) => [this.px(x.d, dMax), this.py(x.flight, loMsl, hiMsl)] as [number, number]);
   });
 
+  // The mission we hand the cloud. When terrain-follow is on we DON'T ship our
+  // baked relative altitudes (those stay in-app for the profile + colour ramp);
+  // instead every waypoint is flattened to the constant target AGL and the mode
+  // is set to aboveGroundLevel, so the cloud follows the surface itself.
+  private missionForCloud(r: GenResult): AutoflyMission {
+    const name = this.missionName().trim() || r.mission.name;
+    if (!r.terrainFollow) return { ...r.mission, name };
+    const agl = Math.round(r.planning.fp.heightM * 100) / 100;
+    return {
+      ...r.mission,
+      name,
+      heightMode: 'aboveGroundLevel',
+      route: r.mission.route.map((p) => ({ lat: p.lat, lng: p.lng, altitude: agl, heading: p.heading, pitch: p.pitch, gimbal: p.gimbal, speed: p.speed, actions: p.actions })),
+    };
+  }
+
   exportJson(): void {
     const r = this.result(); if (!r) return;
-    const name = this.missionName().trim() || r.mission.name;
-    const blob = new Blob([JSON.stringify({ ...r.mission, name }, null, 2)], { type: 'application/json' });
+    const mission = this.missionForCloud(r);
+    const blob = new Blob([JSON.stringify(mission, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = `${name.replace(/[^\w]+/g, '_')}.json`; a.click();
+    a.href = URL.createObjectURL(blob); a.download = `${mission.name.replace(/[^\w]+/g, '_')}.json`; a.click();
     URL.revokeObjectURL(a.href);
   }
 
@@ -684,9 +709,10 @@ export class SurveyPlanner implements AfterViewInit {
     const r = this.result(); if (!r) return;
     this.busy.set(true); this.pushMsg.set(''); this.error.set('');
     try {
-      const name = this.missionName().trim() || r.mission.name;
-      const created = await new UnleashApi({ token: this.token() }).createMission({ ...r.mission, name });
-      this.pushMsg.set(`✓ Created "${name}" — id ${created.id}`);
+      const mission = this.missionForCloud(r);
+      const created = await new UnleashApi({ token: this.token() }).createMission(mission);
+      const agl = Math.round(r.planning.fp.heightM);
+      this.pushMsg.set(`✓ Created "${mission.name}"${r.terrainFollow ? ` — surface-follow @ ${agl} m AGL` : ''} — id ${created.id}`);
     } catch (e: unknown) {
       this.error.set(e instanceof Error ? e.message : String(e));
     } finally {
