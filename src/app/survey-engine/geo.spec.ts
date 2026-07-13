@@ -1,4 +1,4 @@
-import { bufferPolygonMeters, parseKmlPolygon } from './geo';
+import { bufferPolygonMeters, parseKmlPolygon, parseKmlPoint, parseKmlLine } from './geo';
 import { LatLng } from './waypoint';
 
 const C: LatLng = { lat: -37.0, lng: 144.0 };
@@ -39,5 +39,23 @@ describe('geo — parseKmlPolygon', () => {
   });
   it('returns empty for KML with no coordinates', () => {
     expect(parseKmlPolygon('<kml></kml>')).toEqual([]);
+  });
+});
+
+describe('geo — parseKmlPoint / parseKmlLine', () => {
+  it('parses a Point', () => {
+    const kml = '<kml><Placemark><Point><coordinates>143.85,-37.61,0</coordinates></Point></Placemark></kml>';
+    expect(parseKmlPoint(kml)).toEqual({ lat: -37.61, lng: 143.85 });
+  });
+  it('parses a LineString', () => {
+    const kml = '<kml><Placemark><LineString><coordinates>143.85,-37.61,0 143.86,-37.62,0 143.87,-37.60,0</coordinates></LineString></Placemark></kml>';
+    const line = parseKmlLine(kml);
+    expect(line.length).toBe(3);
+    expect(line[1]).toEqual({ lat: -37.62, lng: 143.86 });
+  });
+  it("doesn't confuse a Point KML for a polygon/line", () => {
+    const kml = '<kml><Point><coordinates>143.85,-37.61</coordinates></Point></kml>';
+    expect(parseKmlLine(kml)).toEqual([]);
+    expect(parseKmlPoint(kml)).toEqual({ lat: -37.61, lng: 143.85 });
   });
 });
