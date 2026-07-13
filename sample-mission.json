@@ -1,0 +1,249 @@
+{
+  "name": "Demo Paddock Survey — M4E 2cm",
+  "description": "Auto-generated area survey. GSD 2.0 cm/px, 70/70 overlap.",
+  "type": "waypoint",
+  "heightMode": "EGM96",
+  "waypointCount": 12,
+  "route": [
+    {
+      "lat": -37.61167161208612,
+      "lng": 143.8492990235325,
+      "altitude": 75.079769,
+      "heading": 90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "GIMBAL_PITCH",
+          "param": "-90"
+        },
+        {
+          "action": "AIRCRAFT_YAW",
+          "param": 90
+        },
+        {
+          "action": "START_DISTANCE_INTERVAL_SHOT",
+          "param": "23.8"
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.61167161208612,
+      "lng": 143.8527009764675,
+      "altitude": 75.079769,
+      "heading": 90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "STOP_INTERVAL_SHOT",
+          "param": 0
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.611385018997645,
+      "lng": 143.8527009764675,
+      "altitude": 75.079769,
+      "heading": -90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "GIMBAL_PITCH",
+          "param": "-90"
+        },
+        {
+          "action": "AIRCRAFT_YAW",
+          "param": -90
+        },
+        {
+          "action": "START_DISTANCE_INTERVAL_SHOT",
+          "param": "23.8"
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.611385018997645,
+      "lng": 143.8492990235325,
+      "altitude": 75.079769,
+      "heading": -90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "STOP_INTERVAL_SHOT",
+          "param": 0
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.61109842590917,
+      "lng": 143.8492990235325,
+      "altitude": 75.079769,
+      "heading": 90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "GIMBAL_PITCH",
+          "param": "-90"
+        },
+        {
+          "action": "AIRCRAFT_YAW",
+          "param": 90
+        },
+        {
+          "action": "START_DISTANCE_INTERVAL_SHOT",
+          "param": "23.8"
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.61109842590917,
+      "lng": 143.8527009764675,
+      "altitude": 75.079769,
+      "heading": 90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "STOP_INTERVAL_SHOT",
+          "param": 0
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.610811832820694,
+      "lng": 143.8527009764675,
+      "altitude": 75.079769,
+      "heading": -90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "GIMBAL_PITCH",
+          "param": "-90"
+        },
+        {
+          "action": "AIRCRAFT_YAW",
+          "param": -90
+        },
+        {
+          "action": "START_DISTANCE_INTERVAL_SHOT",
+          "param": "23.8"
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.610811832820694,
+      "lng": 143.8492990235325,
+      "altitude": 75.079769,
+      "heading": -90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "STOP_INTERVAL_SHOT",
+          "param": 0
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.61052523973222,
+      "lng": 143.8492990235325,
+      "altitude": 75.079769,
+      "heading": 90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "GIMBAL_PITCH",
+          "param": "-90"
+        },
+        {
+          "action": "AIRCRAFT_YAW",
+          "param": 90
+        },
+        {
+          "action": "START_DISTANCE_INTERVAL_SHOT",
+          "param": "23.8"
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.61052523973222,
+      "lng": 143.8527009764675,
+      "altitude": 75.079769,
+      "heading": 90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "STOP_INTERVAL_SHOT",
+          "param": 0
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.610238646643744,
+      "lng": 143.8527009764675,
+      "altitude": 75.079769,
+      "heading": -90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "GIMBAL_PITCH",
+          "param": "-90"
+        },
+        {
+          "action": "AIRCRAFT_YAW",
+          "param": -90
+        },
+        {
+          "action": "START_DISTANCE_INTERVAL_SHOT",
+          "param": "23.8"
+        }
+      ],
+      "altitudeEGM": 510.079769
+    },
+    {
+      "lat": -37.610238646643744,
+      "lng": 143.8492990235325,
+      "altitude": 75.079769,
+      "heading": -90,
+      "pitch": -90,
+      "gimbal": 0,
+      "speed": 11.902890173410407,
+      "actions": [
+        {
+          "action": "STOP_INTERVAL_SHOT",
+          "param": 0
+        }
+      ],
+      "altitudeEGM": 510.079769
+    }
+  ]
+}

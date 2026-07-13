@@ -1,0 +1,24 @@
+/* You can add global styles to this file, and also import other style files */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Geoman edit handles — make them obviously grabbable. */
+.marker-icon {
+  width: 16px !important; height: 16px !important;
+  margin-left: -8px !important; margin-top: -8px !important;
+  background: #fff; border: 3px solid #2f6fd6; border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,.6); cursor: grab;
+}
+.marker-icon-middle {
+  width: 13px !important; height: 13px !important;
+  margin-left: -6.5px !important; margin-top: -6.5px !important;
+  background: rgba(255,255,255,.55); border: 2px dashed #2f6fd6; border-radius: 50%;
+  cursor: copy;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0b0f14;
+  overflow: hidden;
+}
