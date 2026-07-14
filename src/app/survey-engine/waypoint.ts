@@ -30,4 +30,15 @@ export interface Waypoint {
    * uses the full cross-leg to come around. null = heading held manually.
    */
   headingDeg: number | null;
+  /**
+   * Per-waypoint gimbal pitch (° from horizontal, negative = down). Set by the
+   * orbit builder so the camera aims at the centre point; undefined = use the
+   * mission's global nadir pitch.
+   */
+  gimbalPitchDeg?: number;
+  /**
+   * In per-waypoint capture mode (orbit), take a photo here. undefined/false on
+   * terrain-follow interpolation points so they don't add spurious shots.
+   */
+  capture?: boolean;
 }

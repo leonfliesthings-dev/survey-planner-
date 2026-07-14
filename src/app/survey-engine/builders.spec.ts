@@ -1,4 +1,4 @@
-import { buildOrbit, buildCorridor, buildPerimeter } from './builders';
+import { buildOrbit, buildCorridor, buildPerimeter, applyTerrainFollow } from './builders';
 import { distanceM } from './geo';
 import { LatLng } from './waypoint';
 
@@ -17,6 +17,40 @@ describe('builders — orbit', () => {
     for (const w of r.waypoints) expect(w.headingDeg).not.toBeNull();
     expect(r.waypoints.filter((w) => w.alignAtPoint).length).toBe(1);
     expect(r.totalLengthM).toBeCloseTo(2 * Math.PI * 100, 0);
+  });
+  it('aims the gimbal down at the POI (−45° for equal radius & height)', () => {
+    const eq = buildOrbit({ center: C, radiusM: 50, pointCount: 8, aglM: 50, speedMs: 5 });
+    expect(eq.waypoints[0].gimbalPitchDeg!).toBeCloseTo(-45, 1);
+    // Raising the POI to aircraft height flattens the gimbal to horizontal.
+    const level = buildOrbit({ center: C, radiusM: 50, pointCount: 8, aglM: 50, speedMs: 5, poiAltM: 50 });
+    expect(level.waypoints[0].gimbalPitchDeg!).toBeCloseTo(0, 1);
+  });
+  it('repeats the circle for multiple loops and captures at every point but the closer', () => {
+    const two = buildOrbit({ center: C, radiusM: 100, pointCount: 12, aglM: 40, speedMs: 6, loops: 2 });
+    expect(two.waypoints.length).toBe(25); // 12×2 + closing point
+    expect(two.lineCount).toBe(2);
+    expect(two.totalLengthM).toBeCloseTo(2 * 2 * Math.PI * 100, 0);
+    expect(two.waypoints.filter((w) => w.capture).length).toBe(24);
+  });
+});
+
+describe('builders — terrain follow', () => {
+  const line = [at(-200, 0), at(0, 0), at(200, 0)];
+  // A ridge in the middle of the corridor: +40 m near lng of C, flat elsewhere.
+  const elevationAt = (p: LatLng) => 100 + 40 * Math.exp(-(((p.lng - C.lng) * 111320 / 60) ** 2));
+  it('inserts intermediate waypoints over a ridge and bakes AGL-relative heights', () => {
+    const flat = buildCorridor({ line, widthM: 0, laneSpacingM: 30, aglM: 60, speedMs: 8 });
+    const tf = buildCorridor({ line, widthM: 0, laneSpacingM: 30, aglM: 60, speedMs: 8, terrain: { elevationAt, lzElevMsl: 100, aglM: 60 } });
+    expect(tf.waypoints.length).toBeGreaterThan(flat.waypoints.length); // densified over the ridge
+    // A waypoint near the ridge crest sits ~AGL above the raised terrain (≈ 60 + 40).
+    const peak = Math.max(...tf.waypoints.map((w) => w.heightM));
+    expect(peak).toBeGreaterThan(90);
+  });
+  it('applyTerrainFollow is a no-op on flat terrain', () => {
+    const wps = buildOrbit({ center: C, radiusM: 80, pointCount: 12, aglM: 50, speedMs: 5 }).waypoints;
+    const out = applyTerrainFollow(wps, { elevationAt: () => 200, lzElevMsl: 200, aglM: 50 });
+    expect(out.length).toBe(wps.length);
+    for (const w of out) expect(w.heightM).toBeCloseTo(50, 6);
   });
 });
 

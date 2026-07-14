@@ -61,6 +61,13 @@ export interface EmitOptions {
   heightMode?: string;
   /** Take-off elevation (MSL, m). When set, altitudeEGM is populated per point. */
   takeoffElevationMslM?: number | null;
+  /**
+   * 'interval' (default) = distance-interval capture along survey lines.
+   * 'perWaypoint' = one framed photo at every capture waypoint (orbit): Autofly
+   * has no native orbit item, so we emit the circle as waypoints, each aiming at
+   * the POI (per-point GIMBAL_PITCH + AIRCRAFT_YAW) and taking a photo.
+   */
+  captureMode?: 'interval' | 'perWaypoint';
 }
 
 const round6 = (v: number): number => Math.round(v * 1e6) / 1e6;
@@ -73,6 +80,7 @@ export function emitAutoflyMission(o: EmitOptions): AutoflyMission {
 
   const nadir = o.nadirPitchDeg ?? -90;
   const heightMode = o.heightMode ?? 'relativeToStartPoint';
+  const captureMode = o.captureMode ?? 'interval';
 
   // Line boundaries: a new line begins at index 0 and at every aligned start.
   const lineStart = new Set<number>();
@@ -91,15 +99,25 @@ export function emitAutoflyMission(o: EmitOptions): AutoflyMission {
     if (w.headingDeg != null) currentHeading = w.headingDeg;
     const headingInt = Math.round(currentHeading);
 
+    const pointPitch = w.gimbalPitchDeg ?? nadir;
     const actions: AutoflyAction[] = [];
-    if (lineStart.has(i)) {
-      // Square up out of the turn, drop to nadir, begin distance-interval capture.
-      actions.push({ action: 'GIMBAL_PITCH', param: String(nadir) });
-      actions.push({ action: 'AIRCRAFT_YAW', param: headingInt });
-      actions.push({ action: 'START_DISTANCE_INTERVAL_SHOT', param: photoSpacingM.toFixed(1) });
-    }
-    if (lineEnd.has(i)) {
-      actions.push({ action: 'STOP_INTERVAL_SHOT', param: 0 });
+    if (captureMode === 'perWaypoint') {
+      // Orbit: frame the POI and shoot at every capture point.
+      if (w.capture) {
+        actions.push({ action: 'GIMBAL_PITCH', param: String(Math.round(pointPitch)) });
+        actions.push({ action: 'AIRCRAFT_YAW', param: headingInt });
+        actions.push({ action: 'TAKE_PHOTO', param: 0 });
+      }
+    } else {
+      if (lineStart.has(i)) {
+        // Square up out of the turn, drop to nadir, begin distance-interval capture.
+        actions.push({ action: 'GIMBAL_PITCH', param: String(Math.round(pointPitch)) });
+        actions.push({ action: 'AIRCRAFT_YAW', param: headingInt });
+        actions.push({ action: 'START_DISTANCE_INTERVAL_SHOT', param: photoSpacingM.toFixed(1) });
+      }
+      if (lineEnd.has(i)) {
+        actions.push({ action: 'STOP_INTERVAL_SHOT', param: 0 });
+      }
     }
 
     const rp: AutoflyRoutePoint = {
@@ -107,7 +125,7 @@ export function emitAutoflyMission(o: EmitOptions): AutoflyMission {
       lng: w.pos.lng,
       altitude: round6(w.heightM),
       heading: headingInt,
-      pitch: nadir,
+      pitch: Math.round(pointPitch),
       gimbal: 0,
       speed: w.speedMs,
       actions,
